@@ -1,14 +1,12 @@
 package expo.modules.reactnativewidgetextension
-import android.util.Log
 import android.content.Context
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import android.app.Activity;
-import android.app.Application;
-import android.content.pm.PackageManager;
-import android.content.Intent;
-import android.content.ComponentName;
-
+import android.util.Log
+import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.URL
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.graphics.Bitmap
@@ -48,65 +46,78 @@ class ReactNativeWidgetExtensionModule() : Module() {
     override fun definition() = ModuleDefinition {
         Name("ReactNativeWidgetExtension")
 
-
         Function("startActivity") { jsonPayload: String ->
 
-            Log.v("startActivity", "$jsonPayload")
+            try {
+                logger.i("startActivity()", "startActivity()")
 
-            val displayMetrics = context.resources.displayMetrics
-            val screenWidth = displayMetrics.widthPixels
-            val density = displayMetrics.density
+                val payload = Gson().fromJson(jsonPayload, ActivityPayload::class.java)
 
-            // Defina uma margem padrão em dp que será convertida em pixels. Ajuste este valor conforme necessário.
-            val marginDp = 16f // ou outro valor que melhor se adapte ao layout desejado
-            // Converta a margem dp para pixels baseada na densidade da tela
-            val marginPx = (marginDp * density).toInt()
+                // Extract file names from avatarMini and carImage URLs
+                val avatarMiniFileName = URL(payload.avatarMini).path
+                val carImageFileName = URL(payload.carImage).path
 
-            // Ajuste a largura do bitmap de acordo com as margens. Subtraia as margens do lado esquerdo e direito.
-            var bitmapWidth = screenWidth - (marginPx * 2)
+                logger.i("Avatar Mini File Name: $avatarMiniFileName")
+                logger.i("Car Image File Name: $carImageFileName")
 
-            // Verifique a versão do Android, e se for Android 9 (API level 28), ajuste a largura conforme necessário
-            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P) {
-                bitmapWidth = screenWidth * 2 // Ajuste a largura do bitmap subtraindo a margem adicional de ambos os lados
+
+                val displayMetrics = context.resources.displayMetrics
+                val screenWidth = displayMetrics.widthPixels
+                val density = displayMetrics.density
+
+                // Defina uma margem padrão em dp que será convertida em pixels. Ajuste este valor conforme necessário.
+                val marginDp = 16f // ou outro valor que melhor se adapte ao layout desejado
+                // Converta a margem dp para pixels baseada na densidade da tela
+                val marginPx = (marginDp * density).toInt()
+
+                // Ajuste a largura do bitmap de acordo com as margens. Subtraia as margens do lado esquerdo e direito.
+                var bitmapWidth = screenWidth - (marginPx * 2)
+
+                // Verifique a versão do Android, e se for Android 9 (API level 28), ajuste a largura conforme necessário
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P) {
+                    bitmapWidth = screenWidth * 2 // Ajuste a largura do bitmap subtraindo a margem adicional de ambos os lados
+                }
+
+                val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f) // Pontos de parada em 25%, 50%, e 75%
+                val progressWithCarBitmap = createProgressBitmapWithDashedLine(context, bitmapWidth, 80, stopPoints)
+
+                val customView = RemoteViews(context.packageName, R.layout.notification_layout).apply {
+                    setTextViewText(R.id.tvTitle, "Estacionado há 0 min")
+                    setTextViewText(R.id.tvCarDetails, "Elvis Lopes")
+                    setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
+                }
+
+
+                val customViewBig = RemoteViews(context.packageName, R.layout.notification_layout).apply {
+                    setTextViewText(R.id.tvTitle, "Estacionado há 0 min")
+                    setTextViewText(R.id.tvCarDetails, "FHN1230: Vermelho Toyota Etios")
+
+                }
+
+                // Create a notification and show it
+                val builder = NotificationCompat.Builder(context, "channel_id")
+                    .setContentTitle("")
+                    .setShowWhen(false)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                    .setCustomContentView(customView)
+                    .setCustomBigContentView(customViewBig)
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .setAutoCancel(false)
+
+
+
+                createNotificationChannel(context)
+                with(NotificationManagerCompat.from(context)) {
+                    notify(1, builder.build()) // 1 is a unique ID for the notification
+                }
+
+                Result.success("Some result or token")
+            } catch (e: Exception) {
+                Log.i("startActivity", "Error: ${e.message}")
+                Result.failure(e)
             }
-
-            val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f) // Pontos de parada em 25%, 50%, e 75%
-            val progressWithCarBitmap = createProgressBitmapWithDashedLine(context, bitmapWidth, 80, stopPoints)
-
-            val customView = RemoteViews(context.packageName, R.layout.notification_layout).apply {
-                setTextViewText(R.id.tvTitle, "Estacionado há 0 min")
-                setTextViewText(R.id.tvCarDetails, "Elvis Lopes")
-                setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
-            }
-
-
-            val customViewBig = RemoteViews(context.packageName, R.layout.notification_layout).apply {
-                setTextViewText(R.id.tvTitle, "Estacionado há 0 min")
-                setTextViewText(R.id.tvCarDetails, "FHN1230: Vermelho Toyota Etios")
-
-            }
-
-            // Create a notification and show it
-            val builder = NotificationCompat.Builder(context, "channel_id")
-                .setContentTitle("")
-                .setShowWhen(false)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-                .setCustomContentView(customView)
-                .setCustomBigContentView(customViewBig)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setAutoCancel(false)
-
-
-
-            createNotificationChannel(context)
-            with(NotificationManagerCompat.from(context)) {
-                notify(1, builder.build()) // 1 is a unique ID for the notification
-            }
-
-
-
 
         }
 
