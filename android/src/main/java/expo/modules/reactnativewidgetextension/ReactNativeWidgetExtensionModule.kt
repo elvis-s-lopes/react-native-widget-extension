@@ -9,6 +9,8 @@ import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.content.ComponentName;
 
+// add news class 
+
 class ReactNativeWidgetExtensionModule() : Module() {
     override fun definition() = ModuleDefinition {
         Name("ReactNativeWidgetExtension")
