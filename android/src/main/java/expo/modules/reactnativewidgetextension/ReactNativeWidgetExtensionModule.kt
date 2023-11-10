@@ -57,8 +57,10 @@ class ReactNativeWidgetExtensionModule() : Module() {
                 val avatarMiniFileName = URL(payload.avatarMini).path
                 val carImageFileName = URL(payload.carImage).path
 
-                Log.i("Avatar Mini File Name: $avatarMiniFileName")
-                Log.i("Car Image File Name: $carImageFileName")
+                Log.i("Avatar Mini File Name", "Error: ${avatarMiniFileName}")
+                Log.i("Car Image File Name", "Error: ${carImageFileName}")
+
+
 
 
                 val displayMetrics = context.resources.displayMetrics
