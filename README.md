@@ -98,3 +98,5 @@ struct LockScreenLiveActivityView: View {
     ...
 }
 ```
+
+#add android support
