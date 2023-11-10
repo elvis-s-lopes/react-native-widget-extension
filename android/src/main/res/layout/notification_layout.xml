@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:text="Estacionado há 0 min"
+        android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
+        android:textSize="14sp" />
+
+    <!-- Adjusted ImageView for the first avatar -->
+    <ImageView
+        android:id="@+id/ivAvatar"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="60dp"
+        android:background="@drawable/avatar_round"
+        android:clipToOutline="true"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_driver_image" />
+
+    <!-- Adjusted ImageView for the second avatar -->
+    <ImageView
+        android:id="@+id/ivAvatar2"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_toStartOf="@id/ivAvatar"
+        android:layout_marginEnd="-10dp"
+        android:background="@drawable/avatar_round"
+        android:clipToOutline="true"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_launcher" />
+
+
+    <TextView
+        android:id="@+id/tvPlate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="10dp"
+        android:text="ABC-2726"
+        android:textColor="#A2AAAD"
+        android:textFontWeight="@android:integer/config_mediumAnimTime"
+        android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
+        android:textSize="11sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/tvPlate"
+        android:layout_alignParentEnd="true"
+        android:textColor="#A2AAAD"
+        android:text="Tesla Uv"
+        android:textFontWeight="@android:integer/config_mediumAnimTime"
+        android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
+        android:textSize="9sp" />
+
+    <TextView
+        android:id="@+id/tvCarDetails"
+        android:layout_below="@id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="8sp"
+        android:text="FHN1230: Vermelho Toyota Etios" />
+
+    <!--<TextView
+        android:id="@+id/tvCarDetails2"
+        android:layout_below="@id/tvCarDetails"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="8sp"
+        android:textFontWeight="@android:integer/config_longAnimTime"
+        android:text="R. Cipriano Agarussi, 64,Jardim Agarussi" />-->
+
+
+    <!-- Progress ImageView -->
+
+
+    <ImageView
+        android:id="@+id/imageProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@id/tvCarDetails"
+        android:layout_gravity="start|center_vertical"
+        android:scaleType="fitXY"
+        android:contentDescription="@string/progress"/>
+
+</RelativeLayout>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">NotificationDemo</string>
+    <string name="progress">imageProgress</string>
+    <string name="footer_description">footer_description</string>
+</resources>
