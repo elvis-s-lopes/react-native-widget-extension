@@ -216,6 +216,20 @@ class ReactNativeWidgetExtensionModule() : Module() {
         return bitmap
     }
 
+data class ActivityPayload(
+    val avatarMini: String,
+    val carImage: String,
+    val statusColor: String,
+    val driverName: String,
+    val devicePlate: String,
+    val deviceModel: String,
+    val timeDriving: String,
+    val dateTimeDevice: String,
+    val deviceAddress: String,
+    val deviceProgress: Double
+)
+
+
 
   private val context: Context
     get() = requireNotNull(appContext.reactContext) { "React Application Context is null" }
