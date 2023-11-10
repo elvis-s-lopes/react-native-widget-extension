@@ -49,7 +49,7 @@ class ReactNativeWidgetExtensionModule() : Module() {
         Function("startActivity") { jsonPayload: String ->
 
             try {
-                logger.i("startActivity()", "startActivity()")
+                Log.i("startActivity()", "startActivity()")
 
                 val payload = Gson().fromJson(jsonPayload, ActivityPayload::class.java)
 
@@ -57,8 +57,8 @@ class ReactNativeWidgetExtensionModule() : Module() {
                 val avatarMiniFileName = URL(payload.avatarMini).path
                 val carImageFileName = URL(payload.carImage).path
 
-                logger.i("Avatar Mini File Name: $avatarMiniFileName")
-                logger.i("Car Image File Name: $carImageFileName")
+                Log.i("Avatar Mini File Name: $avatarMiniFileName")
+                Log.i("Car Image File Name: $carImageFileName")
 
 
                 val displayMetrics = context.resources.displayMetrics
