@@ -100,4 +100,4 @@ struct LockScreenLiveActivityView: View {
 ```
 
 #add android support
-# add new tag 0.0.5
+# add new tag 0.0.6
