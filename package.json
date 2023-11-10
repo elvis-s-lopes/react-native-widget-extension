@@ -6,6 +6,7 @@
   "types": "build/index.d.ts",
   "files": [
     "ios",
+    "android",
     "plugin/build",
     "build",
     "README.md",
