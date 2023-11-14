@@ -1,28 +1,15 @@
 package expo.modules.reactnativewidgetextension
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.Service
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.RectF
-import android.graphics.drawable.BitmapDrawable
-import android.os.Build
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
+import android.graphics.*
+import android.os.*
 import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import android.content.Context
-import android.graphics.DashPathEffect
-import android.graphics.Path
-import android.os.PowerManager
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.util.Log
 import android.widget.RemoteViews
 import com.google.gson.Gson
@@ -30,24 +17,19 @@ import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
 import java.nio.ByteBuffer
-import java.util.*
 import kotlin.random.Random
 
 class NotificationUpdateService : Service() {
     private val handler = Handler(Looper.getMainLooper())
-    private lateinit var runnable: Runnable
-    private val CHANNEL_ID = "order-status"
     private lateinit var webSocketClient: WebSocketClient
     private var isConnected = false
     private var connectionAttempts = 0
-    private val maxConnectionAttempts = 3
-
+    private var data: String? = null
+    private val CHANNEL_ID = "order-status"
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel(this)
-        startForeground(1, createInitialNotification())
-        connectToWebSocket()
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -55,7 +37,7 @@ class NotificationUpdateService : Service() {
             val name = "live-activities"
             val descriptionText = "Channel description"
             val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel("order-status", name, importance).apply {
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
             }
 
@@ -65,82 +47,59 @@ class NotificationUpdateService : Service() {
         }
     }
 
-    private fun connectToWebSocket() {
-        val sharedPref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
-        val payloadString = sharedPref.getString("payload", null)
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        data = intent.getStringExtra("data")
+        if (data != null) {
+            processData(data!!)
+        }
+        return START_STICKY
+    }
 
-        val payload = Gson().fromJson(payloadString, ActivityPayload::class.java)
+    private fun processData(data: String) {
+        val payload = Gson().fromJson(data, ActivityPayload::class.java)
+        if (payload.uniqueId !== null) {
+            startForeground(1, createInitialNotification(payload))
+            connectToWebSocket(data)
+        }
+    }
+
+    private fun connectToWebSocket(data: String) {
+        val delayMillis = 30000L
+        val payload = Gson().fromJson(data, ActivityPayload::class.java)
 
         if (!isConnected && payload.uniqueId !== null) {
-
-
             Log.i("ActivityPayload", payload.uniqueId)
 
-
-            val uri = URI.create("ws://192.168.15.112?uniqueId="+ payload.uniqueId)
+            val uri = URI.create("ws://192.168.31.212?uniqueId=" + payload.uniqueId)
             webSocketClient = object : WebSocketClient(uri) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
-                    Log.i("WebSocket", "Conectado ao WebSocket")
+                    Log.i("WebSocket", "Connected to WebSocket")
                     isConnected = true
-                    connectionAttempts = 0 // Resetar tentativas de conexão
-
-                    // Enviar o identificador único do cliente para o servidor
+                    connectionAttempts = 0
                     val message = "{\"uniqueId\":\"${payload.uniqueId}\"}"
                     send(message)
                 }
 
                 override fun onClose(code: Int, reason: String?, remote: Boolean) {
-                    Log.i("WebSocket", "Conexão fechada: $code, $reason")
+                    Log.i("WebSocket", "Connection closed: $code, $reason")
                     isConnected = false
-                    // Reconecte-se ao WebSocket
-                    //val delayMillis = 20000L // Intervalo de espera entre tentativas (5 segundos)
-                    //handler.postDelayed({
-                    //    connectToWebSocket()
-                    //}, delayMillis)
+
+                    handler.postDelayed({ connectToWebSocket(data) }, delayMillis)
                 }
 
                 override fun onMessage(message: String) {
-                    Log.i("WebSocket", "Mensagem recebida: $message")
-                    // Trate a mensagem WebSocket aqui e atualize a notificação conforme necessário
+                    Log.i("WebSocket", "Message received: $message")
                     val payload = Gson().fromJson(message, ActivityPayload::class.java)
                     updateNotification(payload)
                 }
 
-                override fun onMessage(bytes: ByteBuffer) {
-                    // Implemente isso se você estiver enviando dados binários via WebSocket
-                }
-
                 override fun onError(ex: Exception) {
-                    Log.e("WebSocket", "Erro no WebSocket: ${ex.message}")
+                    Log.e("WebSocket", "Error in WebSocket: ${ex.message}")
                     isConnected = false
-                    val delayMillis = 30000L // Intervalo de espera entre tentativas (5 segundos)
-                    handler.postDelayed({
-                        connectToWebSocket()
-                    }, delayMillis)
+                    handler.postDelayed({ connectToWebSocket(data) }, delayMillis)
                 }
             }
             webSocketClient.connect()
-        }
-    }
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-
-        val data = intent.getStringExtra("data")
-        val sharedPref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
-        val editor = sharedPref.edit()
-        editor.putString("payload", data)
-        editor.apply()
-
-
-        return START_STICKY
-    }
-
-    private fun vibrateDevice() {
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(1000)
         }
     }
 
@@ -154,21 +113,18 @@ class NotificationUpdateService : Service() {
         wakeLock.release() // É importante liberar o WakeLock após o uso
     }
 
-    private fun createInitialNotification(): Notification {
-        val customView = createCustomNotificationView("Estacionado")
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Serviço em Segundo Plano")
+    private fun createInitialNotification(payload: ActivityPayload): Notification {
+        val customView = createCustomNotificationView(payload)
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(customView)
-        return builder.build()
+            .build()
     }
 
     private fun updateNotification(payload: ActivityPayload) {
-        Log.i("deviceData", "${payload.devicePlate}")
-
-        val customView = createCustomNotificationView("${payload.timeDriving}")
+        val customView = createCustomNotificationView(payload)
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setCustomContentView(customView)
@@ -176,11 +132,10 @@ class NotificationUpdateService : Service() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(1, notification)
 
-        //vibrateDevice()
         wakeUpDevice()
     }
 
-    private fun createCustomNotificationView(text: String): RemoteViews {
+    private fun createCustomNotificationView(payload: ActivityPayload): RemoteViews {
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val density = displayMetrics.density
@@ -189,16 +144,18 @@ class NotificationUpdateService : Service() {
         val marginPx = (marginDp * density).toInt()
         var bitmapWidth = screenWidth - (marginPx * 2)
 
-        if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.P) {
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P) {
             bitmapWidth = screenWidth * 2
         }
-        val randomProgress = Random.nextInt(1, 70)
 
+        val randomProgress = Random.nextInt(1, 70)
         val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f)
         val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, randomProgress, stopPoints)
 
         val customView = RemoteViews(packageName, R.layout.notification_layout).apply {
-            setTextViewText(R.id.tvTitle, text)
+            setTextViewText(R.id.tvTitle, payload.timeDriving)
+            setTextViewText(R.id.tvPlate, payload.devicePlate)
+            setTextViewText(R.id.tvModel, payload.deviceModel)
             setTextViewText(R.id.tvCarDetails, "Elvis Lopes")
             setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
         }
@@ -217,15 +174,15 @@ class NotificationUpdateService : Service() {
         stopPoints: FloatArray
     ): Bitmap {
         val resources = context.resources
-        val carBitmap = BitmapFactory.decodeResource(resources, R.drawable.car_mini)
+        val carBitmap = BitmapFactory.decodeResource(resources, R.drawable.car_mini) // Substitua pelo seu recurso
 
-        val newCarWidth = 130
-        val newCarHeight = 80
+        val newCarWidth = 130 // Ajuste conforme necessário
+        val newCarHeight = 80 // Ajuste conforme necessário
         val scaledCarBitmap = scaleBitmap(carBitmap, newCarWidth, newCarHeight)
 
         val carWidth = scaledCarBitmap.width
         val carHeight = scaledCarBitmap.height
-        val barHeight = 25f
+        val barHeight = 25f // Ajuste conforme necessário
 
         val totalWidth = width + carWidth
         val bitmap = Bitmap.createBitmap(totalWidth, carHeight, Bitmap.Config.ARGB_8888)
@@ -264,7 +221,6 @@ class NotificationUpdateService : Service() {
             pathEffect = DashPathEffect(floatArrayOf(60f, 70f), 0f)
         }
 
-        // Desenhar a linha pontilhada na seção não completa da barra de progresso
         if (progress < 100) {
             val path = Path()
             path.moveTo(progressRectFilled.right, progressRect.centerY())
@@ -292,9 +248,11 @@ class NotificationUpdateService : Service() {
         return bitmap
     }
 
+
     override fun onDestroy() {
-        handler.removeCallbacks(runnable)
-        webSocketClient.close()
+        if (::webSocketClient.isInitialized) {
+            webSocketClient.close()
+        }
         super.onDestroy()
     }
 
