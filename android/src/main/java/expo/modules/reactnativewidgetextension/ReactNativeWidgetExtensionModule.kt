@@ -26,18 +26,18 @@ class ReactNativeWidgetExtensionModule() : Module() {
 
                 Result.success("Serviço de notificação iniciado")
 
-                val payload = Gson().fromJson(jsonPayload, ActivityPayload::class.java)
+                //val payload = Gson().fromJson(jsonPayload, ActivityPayload::class.java)
 
                 // Extract file names from avatarMini and carImage URLs
-                val avatarMiniFileName = URL(payload.avatarMini).path
-                val carImageFileName = URL(payload.carImage).path
+                //val avatarMiniFileName = URL(payload.avatarMini).path
+                //val carImageFileName = URL(payload.carImage).path
 
                 //Log.i("Avatar Mini File Name", "Error: ${avatarMiniFileName}")
                 //Log.i("Car Image File Name", "Error: ${carImageFileName}")
 
                 // Iniciar o serviço de notificação
                 val serviceIntent = Intent(context, NotificationUpdateService::class.java)
-                //serviceIntent.putExtra("payloadKey", payload as Serializable)
+                serviceIntent.putExtra("data", jsonPayload)
                 startForegroundService(context, serviceIntent)
 
 
@@ -59,27 +59,13 @@ class ReactNativeWidgetExtensionModule() : Module() {
 
     }
 
-data class ActivityPayload(
-    val avatarMini: String,
-    val carImage: String,
-    val statusColor: String,
-    val driverName: String,
-    val devicePlate: String,
-    val deviceModel: String,
-    val timeDriving: String,
-    val dateTimeDevice: String,
-    val deviceAddress: String,
-    val deviceProgress: Double
-)
 
+    private val context: Context
+        get() = requireNotNull(appContext.reactContext) { "React Application Context is null" }
 
+    private val currentActivity
+        get() = requireNotNull(appContext.activityProvider?.currentActivity)
 
-  private val context: Context
-    get() = requireNotNull(appContext.reactContext) { "React Application Context is null" }
-  
-  private val currentActivity
-    get() = requireNotNull(appContext.activityProvider?.currentActivity)
-
-  private val pm
-    get() = requireNotNull(currentActivity.packageManager)
+    private val pm
+        get() = requireNotNull(currentActivity.packageManager)
 }

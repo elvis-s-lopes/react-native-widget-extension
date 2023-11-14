@@ -4,37 +4,52 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.Service
 import android.content.Intent
-import android.graphics.*
-import android.os.IBinder
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.drawable.BitmapDrawable
+import android.os.Build
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
-import android.widget.RemoteViews
-import android.util.DisplayMetrics
-import kotlin.random.Random
+import android.graphics.DashPathEffect
+import android.graphics.Path
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
-
+import android.widget.RemoteViews
+import com.google.gson.Gson
+import org.java_websocket.client.WebSocketClient
+import org.java_websocket.handshake.ServerHandshake
+import java.net.URI
+import java.nio.ByteBuffer
+import java.util.*
+import kotlin.random.Random
 
 class NotificationUpdateService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var runnable: Runnable
     private val CHANNEL_ID = "order-status"
+    private lateinit var webSocketClient: WebSocketClient
+    private var isConnected = false
+    private var connectionAttempts = 0
+    private val maxConnectionAttempts = 3
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel(this)
         startForeground(1, createInitialNotification())
+        connectToWebSocket()
     }
 
     private fun createNotificationChannel(context: Context) {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is new and not in the support library
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "live-activities"
             val descriptionText = "Channel description"
@@ -43,19 +58,56 @@ class NotificationUpdateService : Service() {
                 description = descriptionText
             }
 
-            // Register the channel with the system
             val notificationManager: NotificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
     }
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
-        runnable = Runnable {
-            updateNotification()
-            handler.postDelayed(runnable, 20000) // Update every 20 seconds
+    private fun connectToWebSocket() {
+        if (!isConnected) {
+            val uri = URI.create("ws://192.168.15.112")
+            webSocketClient = object : WebSocketClient(uri) {
+                override fun onOpen(handshakedata: ServerHandshake?) {
+                    Log.i("WebSocket", "Conectado ao WebSocket")
+                    isConnected = true
+                    connectionAttempts = 0 // Resetar tentativas de conexão
+                }
+
+                override fun onClose(code: Int, reason: String?, remote: Boolean) {
+                    Log.i("WebSocket", "Conexão fechada: $code, $reason")
+                    isConnected = false
+                    // Reconecte-se ao WebSocket
+                    //val delayMillis = 20000L // Intervalo de espera entre tentativas (5 segundos)
+                    //handler.postDelayed({
+                    //    connectToWebSocket()
+                    //}, delayMillis)
+                }
+
+                override fun onMessage(message: String) {
+                    Log.i("WebSocket", "Mensagem recebida: $message")
+                    // Trate a mensagem WebSocket aqui e atualize a notificação conforme necessário
+                    val payload = Gson().fromJson(message, ActivityPayload::class.java)
+                    updateNotification(payload)
+                }
+
+                override fun onMessage(bytes: ByteBuffer) {
+                    // Implemente isso se você estiver enviando dados binários via WebSocket
+                }
+
+                override fun onError(ex: Exception) {
+                    Log.e("WebSocket", "Erro no WebSocket: ${ex.message}")
+                    isConnected = false
+                    val delayMillis = 30000L // Intervalo de espera entre tentativas (5 segundos)
+                    handler.postDelayed({
+                        connectToWebSocket()
+                    }, delayMillis)
+                }
+            }
+            webSocketClient.connect()
         }
-        handler.post(runnable)
+    }
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         return START_STICKY
     }
 
@@ -71,13 +123,16 @@ class NotificationUpdateService : Service() {
 
     private fun wakeUpDevice() {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        val wakeLock = powerManager.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP, "MyApp:WakeLockTag")
+        val wakeLock = powerManager.newWakeLock(
+            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "MyApp:WakeLockTag"
+        )
         wakeLock.acquire(3000) // Acende a tela por 3 segundos
         wakeLock.release() // É importante liberar o WakeLock após o uso
     }
 
     private fun createInitialNotification(): Notification {
-        val customView = createCustomNotificationView("Inicializando...")
+        val customView = createCustomNotificationView("Estacionado")
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Serviço em Segundo Plano")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -87,9 +142,10 @@ class NotificationUpdateService : Service() {
         return builder.build()
     }
 
-    private fun updateNotification() {
-        val currentTime = System.currentTimeMillis().toString()
-        val customView = createCustomNotificationView("Atualizado às: $currentTime")
+    private fun updateNotification(payload: ActivityPayload) {
+        Log.i("deviceData", "${payload.devicePlate}")
+
+        val customView = createCustomNotificationView("${payload.timeDriving}")
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setCustomContentView(customView)
@@ -215,6 +271,7 @@ class NotificationUpdateService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(runnable)
+        webSocketClient.close()
         super.onDestroy()
     }
 
@@ -222,4 +279,16 @@ class NotificationUpdateService : Service() {
         return null
     }
 
+    data class ActivityPayload(
+        val avatarMini: String,
+        val carImage: String,
+        val statusColor: String,
+        val driverName: String,
+        val devicePlate: String,
+        val deviceModel: String,
+        val timeDriving: String,
+        val dateTimeDevice: String,
+        val deviceAddress: String,
+        val deviceProgress: Double
+    )
 }
