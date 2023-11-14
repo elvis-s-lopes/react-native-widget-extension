@@ -42,6 +42,7 @@ class NotificationUpdateService : Service() {
     private var connectionAttempts = 0
     private val maxConnectionAttempts = 3
 
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel(this)
@@ -65,13 +66,27 @@ class NotificationUpdateService : Service() {
     }
 
     private fun connectToWebSocket() {
-        if (!isConnected) {
-            val uri = URI.create("ws://192.168.15.112")
+        val sharedPref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+        val payloadString = sharedPref.getString("payload", null)
+
+        val payload = Gson().fromJson(payloadString, ActivityPayload::class.java)
+
+        if (!isConnected && payload.uniqueId !== null) {
+
+
+            Log.i("ActivityPayload", payload.uniqueId)
+
+
+            val uri = URI.create("ws://192.168.15.112?uniqueId="+ payload.uniqueId)
             webSocketClient = object : WebSocketClient(uri) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
                     Log.i("WebSocket", "Conectado ao WebSocket")
                     isConnected = true
                     connectionAttempts = 0 // Resetar tentativas de conexão
+
+                    // Enviar o identificador único do cliente para o servidor
+                    val message = "{\"uniqueId\":\"${payload.uniqueId}\"}"
+                    send(message)
                 }
 
                 override fun onClose(code: Int, reason: String?, remote: Boolean) {
@@ -108,6 +123,14 @@ class NotificationUpdateService : Service() {
         }
     }
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+
+        val data = intent.getStringExtra("data")
+        val sharedPref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+        val editor = sharedPref.edit()
+        editor.putString("payload", data)
+        editor.apply()
+
+
         return START_STICKY
     }
 
@@ -289,6 +312,7 @@ class NotificationUpdateService : Service() {
         val timeDriving: String,
         val dateTimeDevice: String,
         val deviceAddress: String,
-        val deviceProgress: Double
+        val deviceProgress: Double,
+        val uniqueId: String,
     )
 }

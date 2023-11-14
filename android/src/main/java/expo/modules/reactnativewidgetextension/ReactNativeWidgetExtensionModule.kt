@@ -44,6 +44,7 @@ class ReactNativeWidgetExtensionModule() : Module() {
 
 
 
+
                 Result.success("Some result or token")
             } catch (e: Exception) {
                 Log.i("startActivity", "Error: ${e.message}")
