@@ -47,7 +47,6 @@ class NotificationUpdateService : Service() {
         super.onCreate()
         createNotificationChannel(this)
         startForeground(1, createInitialNotification())
-        connectToWebSocket()
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -77,7 +76,7 @@ class NotificationUpdateService : Service() {
             Log.i("ActivityPayload", payload.uniqueId)
 
 
-            val uri = URI.create("ws://192.168.15.112?uniqueId="+ payload.uniqueId)
+            val uri = URI.create("ws://192.168.0.107?uniqueId="+ payload.uniqueId)
             webSocketClient = object : WebSocketClient(uri) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
                     Log.i("WebSocket", "Conectado ao WebSocket")
@@ -124,12 +123,20 @@ class NotificationUpdateService : Service() {
     }
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
+        val isServiceRunning = stopSelfResult(startId)
+        if (isServiceRunning) {
+            // O serviço está ativo, você pode chamar stopSelf() para encerrá-lo
+            stopSelf()
+        }
+
         val data = intent.getStringExtra("data")
         val sharedPref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
         val editor = sharedPref.edit()
         editor.putString("payload", data)
         editor.apply()
+        Log.i("onStartCommand", "$data")
 
+        connectToWebSocket()
 
         return START_STICKY
     }
