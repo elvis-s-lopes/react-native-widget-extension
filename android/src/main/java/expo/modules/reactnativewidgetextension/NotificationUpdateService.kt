@@ -30,6 +30,8 @@ class NotificationUpdateService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel(this)
+        startForeground(1, createInitialNotification())
+        connectToWebSocket()
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -70,7 +72,8 @@ class NotificationUpdateService : Service() {
         if (!isConnected && payload.uniqueId !== null) {
             Log.i("ActivityPayload", payload.uniqueId)
 
-            val uri = URI.create("ws://192.168.31.212?uniqueId=" + payload.uniqueId)
+
+            val uri = URI.create("ws://192.168.15.112?uniqueId="+ payload.uniqueId)
             webSocketClient = object : WebSocketClient(uri) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
                     Log.i("WebSocket", "Connected to WebSocket")
@@ -100,6 +103,27 @@ class NotificationUpdateService : Service() {
                 }
             }
             webSocketClient.connect()
+        }
+    }
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+
+        val data = intent.getStringExtra("data")
+        val sharedPref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+        val editor = sharedPref.edit()
+        editor.putString("payload", data)
+        editor.apply()
+
+
+        return START_STICKY
+    }
+
+    private fun vibrateDevice() {
+        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(1000, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(1000)
         }
     }
 
