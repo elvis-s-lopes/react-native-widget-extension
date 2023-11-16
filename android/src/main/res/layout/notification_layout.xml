@@ -53,6 +53,7 @@
         android:textSize="11sp" />
 
     <TextView
+        android:id="@+id/tvModel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/tvPlate"
