@@ -5,7 +5,6 @@
     android:layout_height="wrap_content"
     android:padding="2dp">
 
-
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="wrap_content"
@@ -15,7 +14,7 @@
         android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
         android:textSize="14sp" />
 
-    <!-- Adjusted ImageView for the first avatar -->
+    <!-- Ajuste na posição dos avatares para evitar sobreposição -->
     <ImageView
         android:id="@+id/ivAvatar"
         android:layout_width="20dp"
@@ -27,7 +26,6 @@
         android:scaleType="centerCrop"
         android:src="@drawable/ic_driver_image" />
 
-    <!-- Adjusted ImageView for the second avatar -->
     <ImageView
         android:id="@+id/ivAvatar2"
         android:layout_width="20dp"
@@ -39,7 +37,7 @@
         android:scaleType="centerCrop"
         android:src="@drawable/ic_launcher" />
 
-
+    <!-- Informações do veículo -->
     <TextView
         android:id="@+id/tvPlate"
         android:layout_width="wrap_content"
@@ -48,7 +46,6 @@
         android:layout_marginStart="10dp"
         android:text="ABC-2726"
         android:textColor="#A2AAAD"
-        android:textFontWeight="@android:integer/config_mediumAnimTime"
         android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
         android:textSize="11sp" />
 
@@ -60,7 +57,6 @@
         android:layout_alignParentEnd="true"
         android:textColor="#A2AAAD"
         android:text="Tesla Uv"
-        android:textFontWeight="@android:integer/config_mediumAnimTime"
         android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
         android:textSize="9sp" />
 
@@ -72,25 +68,12 @@
         android:textSize="8sp"
         android:text="FHN1230: Vermelho Toyota Etios" />
 
-    <!--<TextView
-        android:id="@+id/tvCarDetails2"
-        android:layout_below="@id/tvCarDetails"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="8sp"
-        android:textFontWeight="@android:integer/config_longAnimTime"
-        android:text="R. Cipriano Agarussi, 64,Jardim Agarussi" />-->
-
-
-    <!-- Progress ImageView -->
-
-
+    <!-- Progresso (ajustado para ser visível e alinhado adequadamente) -->
     <ImageView
         android:id="@+id/imageProgress"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@id/tvCarDetails"
-        android:layout_gravity="start|center_vertical"
+        android:layout_width="match_parent"
+        android:layout_height="20dp"
+        android:layout_below="@id/tvCarDetails"
         android:scaleType="fitXY"
         android:contentDescription="@string/progress"/>
 
