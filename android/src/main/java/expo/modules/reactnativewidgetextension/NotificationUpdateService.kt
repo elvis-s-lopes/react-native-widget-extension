@@ -31,6 +31,7 @@ class NotificationUpdateService : Service() {
     private var backoffTime = 10000L // Inicializar tempo de backoff
 
 
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel(this)
@@ -67,6 +68,16 @@ class NotificationUpdateService : Service() {
         }
     }
 
+    fun mergePayloads(messagePayload: ActivityPayload, activityPayload: ActivityPayload): ActivityPayload {
+        return messagePayload.copy(
+            avatarMini = activityPayload.avatarMini.takeIf { it.isNotEmpty() } ?: messagePayload.avatarMini,
+            carImage = activityPayload.carImage.takeIf { it.isNotEmpty() } ?: messagePayload.carImage
+        )
+    }
+
+
+
+
     private fun connectToWebSocket(data: String) {
         val payload = Gson().fromJson(data, ActivityPayload::class.java)
 
@@ -92,8 +103,13 @@ class NotificationUpdateService : Service() {
 
                 override fun onMessage(message: String) {
                     Log.i("WebSocket", "Message received: $message")
-                    val payload = Gson().fromJson(message, ActivityPayload::class.java)
-                    updateNotification(payload)
+                    val messagePayload = Gson().fromJson(message, ActivityPayload::class.java)
+                    val activityPayload = ActivityPayload(avatarMini = "avatarUri", carImage = "carImageUri")
+                    val mergedPayload = mergePayloads(messagePayload, activityPayload)
+                    Log.i("merged", "$mergedPayload")
+
+
+                    updateNotification(messagePayload)
                 }
 
                 override fun onError(ex: Exception) {
@@ -375,4 +391,13 @@ class NotificationUpdateService : Service() {
         val deviceProgress: Double,
         val uniqueId: String,
     )
+
+    data class MessagePayload(
+        val avatarMini: String? = null,
+        val carImage: String? = null,
+    )
+
+    companion object {
+        private const val PREFERENCES_FILE_KEY = "com.example.myapp.PREFERENCE_FILE_KEY"
+    }
 }
