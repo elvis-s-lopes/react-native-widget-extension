@@ -26,24 +26,10 @@ class ReactNativeWidgetExtensionModule() : Module() {
 
                 Result.success("Serviço de notificação iniciado")
 
-                //val payload = Gson().fromJson(jsonPayload, ActivityPayload::class.java)
-
-                // Extract file names from avatarMini and carImage URLs
-                //val avatarMiniFileName = URL(payload.avatarMini).path
-                //val carImageFileName = URL(payload.carImage).path
-
-                //Log.i("Avatar Mini File Name", "Error: ${avatarMiniFileName}")
-                //Log.i("Car Image File Name", "Error: ${carImageFileName}")
-
                 // Iniciar o serviço de notificação
                 val serviceIntent = Intent(context, NotificationUpdateService::class.java)
                 serviceIntent.putExtra("data", jsonPayload)
                 startForegroundService(context, serviceIntent)
-
-
-
-
-
 
                 Result.success("Some result or token")
             } catch (e: Exception) {

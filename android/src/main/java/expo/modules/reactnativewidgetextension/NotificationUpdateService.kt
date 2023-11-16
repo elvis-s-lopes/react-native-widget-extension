@@ -1,6 +1,5 @@
 package expo.modules.reactnativewidgetextension
 
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.Service
@@ -10,14 +9,17 @@ import android.os.*
 import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.widget.RemoteViews
 import com.google.gson.Gson
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
-import java.nio.ByteBuffer
+import kotlin.math.min
 import kotlin.random.Random
+import android.widget.ImageView
+import kotlin.math.max
 
 class NotificationUpdateService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -26,6 +28,8 @@ class NotificationUpdateService : Service() {
     private var connectionAttempts = 0
     private var data: String? = null
     private val CHANNEL_ID = "order-status"
+    private var backoffTime = 10000L // Inicializar tempo de backoff
+
 
     override fun onCreate() {
         super.onCreate()
@@ -57,20 +61,17 @@ class NotificationUpdateService : Service() {
 
     private fun processData(data: String) {
         val payload = Gson().fromJson(data, ActivityPayload::class.java)
-        if (payload.uniqueId !== null) {
+        payload.uniqueId?.let {
             startForeground(1, createInitialNotification(payload))
             connectToWebSocket(data)
         }
     }
 
     private fun connectToWebSocket(data: String) {
-        val delayMillis = 30000L
         val payload = Gson().fromJson(data, ActivityPayload::class.java)
 
-        if (!isConnected && payload.uniqueId !== null) {
-            Log.i("ActivityPayload", payload.uniqueId)
-
-            val uri = URI.create("ws://192.168.31.212?uniqueId=" + payload.uniqueId)
+        if (!isConnected && payload.uniqueId != null) {
+            val uri = URI.create("ws://192.168.0.107?uniqueId=${payload.uniqueId}")
             webSocketClient = object : WebSocketClient(uri) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
                     Log.i("WebSocket", "Connected to WebSocket")
@@ -84,7 +85,9 @@ class NotificationUpdateService : Service() {
                     Log.i("WebSocket", "Connection closed: $code, $reason")
                     isConnected = false
 
-                    handler.postDelayed({ connectToWebSocket(data) }, delayMillis)
+                    backoffTime *= 2 // Dobrar o tempo de backoff
+                    val reconnectTime = minOf(backoffTime, 60000L) // Limitar a 60 segundos
+                    handler.postDelayed({ connectToWebSocket(data) }, reconnectTime)
                 }
 
                 override fun onMessage(message: String) {
@@ -96,7 +99,10 @@ class NotificationUpdateService : Service() {
                 override fun onError(ex: Exception) {
                     Log.e("WebSocket", "Error in WebSocket: ${ex.message}")
                     isConnected = false
-                    handler.postDelayed({ connectToWebSocket(data) }, delayMillis)
+
+                    backoffTime *= 2 // Dobrar o tempo de backoff
+                    val reconnectTime = minOf(backoffTime, 60000L) // Limitar a 60 segundos
+                    handler.postDelayed({ connectToWebSocket(data) }, reconnectTime)
                 }
             }
             webSocketClient.connect()
@@ -118,6 +124,8 @@ class NotificationUpdateService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(customView)
             .build()
@@ -145,25 +153,95 @@ class NotificationUpdateService : Service() {
         val marginPx = (marginDp * density).toInt()
         var bitmapWidth = screenWidth - (marginPx * 2)
 
-        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P) {
-            bitmapWidth = screenWidth * 2
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P || Build.VERSION.SDK_INT == Build.VERSION_CODES.R) {
+            bitmapWidth = screenWidth * 3
         }
 
         val randomProgress = Random.nextInt(1, 70)
         val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f)
         val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, randomProgress, stopPoints)
 
+
         val customView = RemoteViews(packageName, R.layout.notification_layout).apply {
             setTextViewText(R.id.tvTitle, payload.timeDriving)
             setTextViewText(R.id.tvPlate, payload.devicePlate)
-            setTextViewText(R.id.tvModel, payload.deviceModel)
-            setTextViewText(R.id.tvCarDetails, "Elvis Lopes")
+            setTextViewText(R.id.tvModel, payload.dateTimeDevice)
+            setTextViewText(R.id.tvCarDetails, payload.deviceAddress)
             setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
+
+
+            payload.carImage?.takeIf { it.isNotEmpty() }?.let { uriString ->
+                runCatching {
+                    Uri.parse(uriString)
+                }.getOrNull()?.let { uri ->
+                    val avatarBitmap = getBitmapFromUri(this@NotificationUpdateService, uri, 50, 50, 500f, payload.statusColor, 5)
+                    setImageViewBitmap(R.id.ivAvatar2, avatarBitmap)
+                }
+            }
+
+            payload.avatarMini?.takeIf { it.isNotEmpty() }?.let { uriString ->
+                runCatching {
+                    Uri.parse(uriString)
+                }.getOrNull()?.let { uri ->
+                    val avatarBitmap = getBitmapFromUri(this@NotificationUpdateService, uri, 50, 50, 500f)
+                    setImageViewBitmap(R.id.ivAvatar, avatarBitmap)
+                }
+            }
+
+
         }
 
         return customView
     }
 
+    fun getBitmapFromUri(context: Context, uri: Uri, width: Int, height: Int, cornerRadius: Float, borderColorHex: String? = null, borderWidth: Int = 0): Bitmap? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream)?.let { originalBitmap ->
+                    // Redimensiona o Bitmap para as dimensões especificadas
+                    val resizedBitmap = Bitmap.createScaledBitmap(originalBitmap, width, height, true)
+
+                    // Ajusta as dimensões para incluir a borda
+                    val adjustedWidth = width - 2 * borderWidth
+                    val adjustedHeight = height - 2 * borderWidth
+
+                    // Cria um novo Bitmap com cantos arredondados e possivelmente com borda
+                    val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(output)
+
+                    val paint = Paint().apply {
+                        isAntiAlias = true
+                        color = Color.BLACK
+                    }
+
+                    val rect = Rect(0, 0, adjustedWidth, adjustedHeight)
+                    val rectF = RectF(rect)
+
+                    // Desenha o retângulo arredondado
+                    canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, paint)
+                    paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+                    canvas.drawBitmap(resizedBitmap, rect, rect, paint)
+
+                    // Desenha a borda, se uma cor de borda for fornecida
+                    borderColorHex?.let {
+                        val borderPaint = Paint().apply {
+                            isAntiAlias = true
+                            color = Color.parseColor(borderColorHex)
+                            style = Paint.Style.STROKE
+                            strokeWidth = borderWidth.toFloat()
+                        }
+                        val borderRect = RectF(borderWidth / 2f, borderWidth / 2f, adjustedWidth + borderWidth / 2f, adjustedHeight + borderWidth / 2f)
+                        canvas.drawRoundRect(borderRect, cornerRadius, cornerRadius, borderPaint)
+                    }
+
+                    output
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
     private fun scaleBitmap(bitmap: Bitmap, newWidth: Int, newHeight: Int): Bitmap {
         return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
@@ -250,7 +328,30 @@ class NotificationUpdateService : Service() {
     }
 
 
+    fun Bitmap.toCircularBitmap(): Bitmap {
+        val width = this.width
+        val height = this.height
+        val diameter = min(width, height)
+
+        val outputBitmap = Bitmap.createBitmap(diameter, diameter, Bitmap.Config.ARGB_8888)
+
+        val canvas = Canvas(outputBitmap)
+        val paint = Paint()
+        val rect = Rect(0, 0, diameter, diameter)
+        val rectF = RectF(rect)
+
+        paint.isAntiAlias = true
+        canvas.drawOval(rectF, paint)
+        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        canvas.drawBitmap(this, rect, rect, paint)
+
+        return outputBitmap
+    }
+
+
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+
         if (::webSocketClient.isInitialized) {
             webSocketClient.close()
         }
