@@ -68,6 +68,7 @@ class NotificationUpdateService : Service() {
         }
     }
 
+
     fun mergePayloads(messagePayload: ActivityPayload, activityPayload: ActivityPayload): ActivityPayload {
         return messagePayload.copy(
             avatarMini = activityPayload.avatarMini.takeIf { it.isNotEmpty() } ?: messagePayload.avatarMini,
@@ -76,13 +77,11 @@ class NotificationUpdateService : Service() {
     }
 
 
-
-
     private fun connectToWebSocket(data: String) {
         val payload = Gson().fromJson(data, ActivityPayload::class.java)
 
         if (!isConnected && payload.uniqueId != null) {
-            val uri = URI.create("ws://192.168.0.107?uniqueId=${payload.uniqueId}")
+            val uri = URI.create("ws://192.168.31.212?uniqueId=${payload.uniqueId}")
             webSocketClient = object : WebSocketClient(uri) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
                     Log.i("WebSocket", "Connected to WebSocket")
@@ -104,12 +103,10 @@ class NotificationUpdateService : Service() {
                 override fun onMessage(message: String) {
                     Log.i("WebSocket", "Message received: $message")
                     val messagePayload = Gson().fromJson(message, ActivityPayload::class.java)
-                    val activityPayload = ActivityPayload(avatarMini = "avatarUri", carImage = "carImageUri")
-                    val mergedPayload = mergePayloads(messagePayload, activityPayload)
-                    Log.i("merged", "$mergedPayload")
+                    val imageCar = payload.carImage;
+                    val imageDriver = payload.avatarMini;
 
-
-                    updateNotification(messagePayload)
+                    updateNotification(messagePayload , imageCar, imageDriver)
                 }
 
                 override fun onError(ex: Exception) {
@@ -147,8 +144,8 @@ class NotificationUpdateService : Service() {
             .build()
     }
 
-    private fun updateNotification(payload: ActivityPayload) {
-        val customView = createCustomNotificationView(payload)
+    private fun updateNotification(payload: ActivityPayload, imageCar: String, imageDriver: String) {
+        val customView = createCustomNotificationView(payload, imageCar, imageDriver)
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
@@ -160,7 +157,7 @@ class NotificationUpdateService : Service() {
         wakeUpDevice()
     }
 
-    private fun createCustomNotificationView(payload: ActivityPayload): RemoteViews {
+    private fun createCustomNotificationView(payload: ActivityPayload, imageCar: String = "", imageDriver: String = ""): RemoteViews {
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val density = displayMetrics.density
@@ -177,7 +174,6 @@ class NotificationUpdateService : Service() {
         val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f)
         val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, randomProgress, stopPoints)
 
-
         val customView = RemoteViews(packageName, R.layout.notification_layout).apply {
             setTextViewText(R.id.tvTitle, payload.timeDriving)
             setTextViewText(R.id.tvPlate, payload.devicePlate)
@@ -185,30 +181,40 @@ class NotificationUpdateService : Service() {
             setTextViewText(R.id.tvCarDetails, payload.deviceAddress)
             setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
 
-
-            payload.carImage?.takeIf { it.isNotEmpty() }?.let { uriString ->
-                runCatching {
-                    Uri.parse(uriString)
-                }.getOrNull()?.let { uri ->
-                    val avatarBitmap = getBitmapFromUri(this@NotificationUpdateService, uri, 50, 50, 500f, payload.statusColor, 5)
-                    setImageViewBitmap(R.id.ivAvatar2, avatarBitmap)
+            if (imageCar.isNotEmpty()) {
+                // Use the provided imageCar
+                val carBitmap = getBitmapFromUri(this@NotificationUpdateService, Uri.parse(imageCar), 50, 50, 500f, payload.statusColor, 5)
+                setImageViewBitmap(R.id.ivAvatar2, carBitmap)
+            } else {
+                payload.carImage?.takeIf { it.isNotEmpty() }?.let { uriString ->
+                    runCatching {
+                        Uri.parse(uriString)
+                    }.getOrNull()?.let { uri ->
+                        val avatarBitmap = getBitmapFromUri(this@NotificationUpdateService, uri, 50, 50, 500f, payload.statusColor, 5)
+                        setImageViewBitmap(R.id.ivAvatar2, avatarBitmap)
+                    }
                 }
             }
 
-            payload.avatarMini?.takeIf { it.isNotEmpty() }?.let { uriString ->
-                runCatching {
-                    Uri.parse(uriString)
-                }.getOrNull()?.let { uri ->
-                    val avatarBitmap = getBitmapFromUri(this@NotificationUpdateService, uri, 50, 50, 500f)
-                    setImageViewBitmap(R.id.ivAvatar, avatarBitmap)
+            if (imageDriver.isNotEmpty()) {
+                // Use the provided imageDriver
+                val driverBitmap = getBitmapFromUri(this@NotificationUpdateService, Uri.parse(imageDriver), 50, 50, 500f)
+                setImageViewBitmap(R.id.ivAvatar, driverBitmap)
+            } else {
+                payload.avatarMini?.takeIf { it.isNotEmpty() }?.let { uriString ->
+                    runCatching {
+                        Uri.parse(uriString)
+                    }.getOrNull()?.let { uri ->
+                        val avatarBitmap = getBitmapFromUri(this@NotificationUpdateService, uri, 50, 50, 500f)
+                        setImageViewBitmap(R.id.ivAvatar, avatarBitmap)
+                    }
                 }
             }
-
-
         }
 
         return customView
     }
+
 
     fun getBitmapFromUri(context: Context, uri: Uri, width: Int, height: Int, cornerRadius: Float, borderColorHex: String? = null, borderWidth: Int = 0): Bitmap? {
         return try {
