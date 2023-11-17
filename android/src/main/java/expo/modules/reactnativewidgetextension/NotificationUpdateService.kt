@@ -27,10 +27,12 @@ class NotificationUpdateService : Service() {
     private var data: String? = null
     private val CHANNEL_ID = "order-status"
     private var backoffTime = 10000L // Inicializar tempo de backoff
+    private var shouldReconnect = true
 
     companion object {
         const val ACTION_STOP_SERVICE = "expo.modules.reactnativewidgetextension.ACTION_STOP_SERVICE"
-        const val ACTION_RESTART_SERVICE = "expo.modules.reactnativewidgetextension.ACTION_RESTART_SERVICE"
+        const val ACTION_START_SERVICE = "expo.modules.reactnativewidgetextension.ACTION_START_SERVICE"
+
 
         @Volatile private var isRunning = false
 
@@ -65,21 +67,32 @@ class NotificationUpdateService : Service() {
         if (::webSocketClient.isInitialized && webSocketClient.isOpen) {
             webSocketClient.close()
         }
+        isConnected = false
     }
+
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        data = intent.getStringExtra("data")
-        if (data != null) {
-            closeWebSocketConnection()
-            handler.removeCallbacksAndMessages(null)
-            processData(data!!)
+        when (intent.action) {
+            ACTION_START_SERVICE -> {
+                // Add your code here to start service functionality
+                data = intent.getStringExtra("data")
+                if (data != null) {
+                    closeWebSocketConnection()
+                    handler.removeCallbacksAndMessages(null)
+                    processData(data!!)
+                }
+                // Keep the service running
+                return START_STICKY
+            }
+            ACTION_STOP_SERVICE -> {
+                shouldReconnect = false
+                stopSelf()
+                closeWebSocketConnection()
+                handler.removeCallbacksAndMessages(null)
+                return START_NOT_STICKY
+            }
         }
 
-        if (intent.action == ACTION_STOP_SERVICE) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun processData(data: String) {
@@ -109,10 +122,12 @@ class NotificationUpdateService : Service() {
                 override fun onClose(code: Int, reason: String?, remote: Boolean) {
                     Log.i("WebSocket", "Connection closed: $code, $reason")
                     isConnected = false
+                    if (shouldReconnect) {
 
                         backoffTime *= 2 // Dobrar o tempo de backoff
                         val reconnectTime = minOf(backoffTime, 60000L) // Limitar a 60 segundos
                         handler.postDelayed({ connectToWebSocket(data) }, reconnectTime)
+                    }
 
                 }
 
@@ -128,10 +143,12 @@ class NotificationUpdateService : Service() {
                 override fun onError(ex: Exception) {
                     Log.e("WebSocket", "Error in WebSocket: ${ex.message}")
                     isConnected = false
+                    if (shouldReconnect) {
 
-                    backoffTime *= 2 // Dobrar o tempo de backoff
-                    val reconnectTime = minOf(backoffTime, 60000L) // Limitar a 60 segundos
-                    handler.postDelayed({ connectToWebSocket(data) }, reconnectTime)
+                        backoffTime *= 2 // Dobrar o tempo de backoff
+                        val reconnectTime = minOf(backoffTime, 60000L) // Limitar a 60 segundos
+                        handler.postDelayed({ connectToWebSocket(data) }, reconnectTime)
+                    }
                 }
             }
             webSocketClient.connect()
@@ -151,24 +168,29 @@ class NotificationUpdateService : Service() {
         val stopIntent = Intent(this, NotificationUpdateService::class.java).apply {
             action = ACTION_STOP_SERVICE
         }
-        return PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        return PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_MUTABLE)
     }
 
 
     private fun createInitialNotification(payload: ActivityPayload): Notification {
         val customView = createCustomNotificationView(payload)
+        val customViewExp = createCustomNotificationViewExpand(payload)
+
+
         val stopServicePendingIntent = createStopServicePendingIntent()
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_baseline_notifications_24)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomBigContentView(customViewExp)
             .setCustomContentView(customView)
             .addAction(
                 0, // Zero indica que nenhum ícone será usado
-                "Parar Serviço", // Texto do botão
+                "Encerrar", // Texto do botão
                 stopServicePendingIntent // PendingIntent para a ação de parar
             )
             .build()
@@ -176,15 +198,19 @@ class NotificationUpdateService : Service() {
 
     private fun updateNotification(payload: ActivityPayload, imageCar: String, imageDriver: String) {
         val customView = createCustomNotificationView(payload, imageCar, imageDriver)
+        val customViewExp = createCustomNotificationViewExpand(payload, imageCar, imageDriver)
+
+
         val stopServicePendingIntent = createStopServicePendingIntent()
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomBigContentView(customViewExp)
             .setCustomContentView(customView)
             .addAction(
                 0, // Zero indica que nenhum ícone será usado
-                "Parar Serviço", // Texto do botão
+                "Encerrar", // Texto do botão
                 stopServicePendingIntent // PendingIntent para a ação de parar
             )
             .build()
@@ -216,11 +242,73 @@ class NotificationUpdateService : Service() {
         val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue, stopPoints)
 
         val customView = RemoteViews(packageName, R.layout.notification_layout).apply {
+
             setTextViewText(R.id.tvTitle, payload.timeDriving)
             setTextViewText(R.id.tvPlate, payload.devicePlate)
             setTextViewText(R.id.tvModel, payload.dateTimeDevice)
             setTextViewText(R.id.tvCarDetails, payload.deviceAddress)
             setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
+
+
+            if (imageCar.isNotEmpty()) {
+                // Use the provided imageCar
+                val carBitmap = getBitmapFromUri(this@NotificationUpdateService, Uri.parse(imageCar), 50, 50, 500f, payload.statusColor, 5)
+                setImageViewBitmap(R.id.ivAvatar2, carBitmap)
+            } else {
+                payload.carImage?.takeIf { it.isNotEmpty() }?.let { uriString ->
+                    runCatching {
+                        Uri.parse(uriString)
+                    }.getOrNull()?.let { uri ->
+                        val avatarBitmap = getBitmapFromUri(this@NotificationUpdateService, uri, 50, 50, 500f, payload.statusColor, 5)
+                        setImageViewBitmap(R.id.ivAvatar2, avatarBitmap)
+                    }
+                }
+            }
+
+            if (imageDriver.isNotEmpty()) {
+                // Use the provided imageDriver
+                val driverBitmap = getBitmapFromUri(this@NotificationUpdateService, Uri.parse(imageDriver), 50, 50, 500f)
+                setImageViewBitmap(R.id.ivAvatar, driverBitmap)
+            } else {
+                payload.avatarMini?.takeIf { it.isNotEmpty() }?.let { uriString ->
+                    runCatching {
+                        Uri.parse(uriString)
+                    }.getOrNull()?.let { uri ->
+                        val avatarBitmap = getBitmapFromUri(this@NotificationUpdateService, uri, 50, 50, 500f)
+                        setImageViewBitmap(R.id.ivAvatar, avatarBitmap)
+                    }
+                }
+            }
+        }
+
+        return customView
+    }
+
+    private fun createCustomNotificationViewExpand(payload: ActivityPayload, imageCar: String = "", imageDriver: String = ""): RemoteViews {
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val density = displayMetrics.density
+
+        val marginDp = 16f
+        val marginPx = (marginDp * density).toInt()
+        var bitmapWidth = screenWidth - (marginPx * 2)
+
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P || Build.VERSION.SDK_INT == Build.VERSION_CODES.R) {
+            bitmapWidth = screenWidth * 2
+        }
+
+        val progressValue = doubleToInt(payload.deviceProgress)
+
+        val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f)
+        val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue, stopPoints)
+
+        val customView = RemoteViews(packageName, R.layout.notification_layout_big).apply {
+            setTextViewText(R.id.tvTitle, payload.timeDriving)
+            setTextViewText(R.id.tvPlate, payload.devicePlate)
+            setTextViewText(R.id.tvModel, payload.dateTimeDevice)
+            setTextViewText(R.id.tvCarDetails, payload.deviceAddress)
+            setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
+
 
             if (imageCar.isNotEmpty()) {
                 // Use the provided imageCar
@@ -413,12 +501,9 @@ class NotificationUpdateService : Service() {
 
 
     override fun onDestroy() {
-
+        shouldReconnect = false
+        closeWebSocketConnection()
         handler.removeCallbacksAndMessages(null)
-
-        if (::webSocketClient.isInitialized) {
-            webSocketClient.close()
-        }
         super.onDestroy()
         isRunning = false
 

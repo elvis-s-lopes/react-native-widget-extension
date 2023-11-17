@@ -1,7 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:text="Estacionado há 0 min"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
+            android:textSize="13sp" />
+
+        <!-- Ajuste na posição dos avatares para evitar sobreposição -->
+        <ImageView
+            android:id="@+id/ivAvatar2"
+            android:layout_width="60px"
+            android:layout_height="60px"
+            android:layout_toStartOf="@id/ivAvatar"
+            android:layout_marginEnd="-5dp"
+            android:src="@drawable/ic_launcher" />
+
+        <ImageView
+            android:id="@+id/ivAvatar"
+            android:layout_width="50px"
+            android:layout_height="50px"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="70dp"
+            android:src="@drawable/ic_driver_image" />
+
+        <!-- Informações do veículo -->
+        <TextView
+            android:id="@+id/tvPlate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="10dp"
+            android:text="ABC-2726"
+            android:textColor="#A2AAAD"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
+            android:textSize="11sp"
+            android:maxLength="10"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tvModel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/tvPlate"
+            android:layout_alignParentEnd="true"
+            android:textColor="#A2AAAD"
+            android:text="Tesla Uv"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
+            android:textSize="11sp" />
+
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/tvCarDetails"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="11sp"
+        android:text="Address" />
+
+    <ImageView
+        android:id="@+id/imageProgress"
+        android:layout_width="match_parent"
+        android:layout_height="20dp"
+        android:scaleType="fitXY"
+        android:contentDescription="@string/progress"
+         />
 
 </LinearLayout>
