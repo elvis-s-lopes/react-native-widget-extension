@@ -8,6 +8,7 @@ import android.graphics.*
 import android.os.*
 import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -17,9 +18,6 @@ import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
 import kotlin.math.min
-import kotlin.random.Random
-import android.widget.ImageView
-import kotlin.math.max
 
 class NotificationUpdateService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -30,12 +28,23 @@ class NotificationUpdateService : Service() {
     private val CHANNEL_ID = "order-status"
     private var backoffTime = 10000L // Inicializar tempo de backoff
 
+    companion object {
+        const val ACTION_STOP_SERVICE = "expo.modules.reactnativewidgetextension.ACTION_STOP_SERVICE"
+        const val ACTION_RESTART_SERVICE = "expo.modules.reactnativewidgetextension.ACTION_RESTART_SERVICE"
 
+        @Volatile private var isRunning = false
 
-    override fun onCreate() {
-        super.onCreate()
-        createNotificationChannel(this)
+        fun isServiceRunning() = isRunning
     }
+
+
+     override fun onCreate() {
+        super.onCreate()
+         isRunning = true
+         createNotificationChannel(this)
+    }
+
+
 
     private fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -52,16 +61,30 @@ class NotificationUpdateService : Service() {
         }
     }
 
+    private fun closeWebSocketConnection() {
+        if (::webSocketClient.isInitialized && webSocketClient.isOpen) {
+            webSocketClient.close()
+        }
+    }
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         data = intent.getStringExtra("data")
         if (data != null) {
+            closeWebSocketConnection()
+            handler.removeCallbacksAndMessages(null)
             processData(data!!)
         }
+
+        if (intent.action == ACTION_STOP_SERVICE) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         return START_STICKY
     }
 
     private fun processData(data: String) {
         val payload = Gson().fromJson(data, ActivityPayload::class.java)
+
         payload.uniqueId?.let {
             startForeground(1, createInitialNotification(payload))
             connectToWebSocket(data)
@@ -69,19 +92,11 @@ class NotificationUpdateService : Service() {
     }
 
 
-    fun mergePayloads(messagePayload: ActivityPayload, activityPayload: ActivityPayload): ActivityPayload {
-        return messagePayload.copy(
-            avatarMini = activityPayload.avatarMini.takeIf { it.isNotEmpty() } ?: messagePayload.avatarMini,
-            carImage = activityPayload.carImage.takeIf { it.isNotEmpty() } ?: messagePayload.carImage
-        )
-    }
-
-
     private fun connectToWebSocket(data: String) {
         val payload = Gson().fromJson(data, ActivityPayload::class.java)
 
         if (!isConnected && payload.uniqueId != null) {
-            val uri = URI.create("ws://192.168.31.212?uniqueId=${payload.uniqueId}")
+            val uri = URI.create("ws://192.168.0.107?uniqueId=${payload.uniqueId}")
             webSocketClient = object : WebSocketClient(uri) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
                     Log.i("WebSocket", "Connected to WebSocket")
@@ -95,9 +110,10 @@ class NotificationUpdateService : Service() {
                     Log.i("WebSocket", "Connection closed: $code, $reason")
                     isConnected = false
 
-                    backoffTime *= 2 // Dobrar o tempo de backoff
-                    val reconnectTime = minOf(backoffTime, 60000L) // Limitar a 60 segundos
-                    handler.postDelayed({ connectToWebSocket(data) }, reconnectTime)
+                        backoffTime *= 2 // Dobrar o tempo de backoff
+                        val reconnectTime = minOf(backoffTime, 60000L) // Limitar a 60 segundos
+                        handler.postDelayed({ connectToWebSocket(data) }, reconnectTime)
+
                 }
 
                 override fun onMessage(message: String) {
@@ -131,9 +147,18 @@ class NotificationUpdateService : Service() {
         wakeLock.acquire(3000) // Acende a tela por 3 segundos
         wakeLock.release() // É importante liberar o WakeLock após o uso
     }
+    private fun createStopServicePendingIntent(): PendingIntent {
+        val stopIntent = Intent(this, NotificationUpdateService::class.java).apply {
+            action = ACTION_STOP_SERVICE
+        }
+        return PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
 
     private fun createInitialNotification(payload: ActivityPayload): Notification {
         val customView = createCustomNotificationView(payload)
+        val stopServicePendingIntent = createStopServicePendingIntent()
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -141,20 +166,35 @@ class NotificationUpdateService : Service() {
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(customView)
+            .addAction(
+                0, // Zero indica que nenhum ícone será usado
+                "Parar Serviço", // Texto do botão
+                stopServicePendingIntent // PendingIntent para a ação de parar
+            )
             .build()
     }
 
     private fun updateNotification(payload: ActivityPayload, imageCar: String, imageDriver: String) {
         val customView = createCustomNotificationView(payload, imageCar, imageDriver)
+        val stopServicePendingIntent = createStopServicePendingIntent()
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(customView)
+            .addAction(
+                0, // Zero indica que nenhum ícone será usado
+                "Parar Serviço", // Texto do botão
+                stopServicePendingIntent // PendingIntent para a ação de parar
+            )
             .build()
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(1, notification)
 
         wakeUpDevice()
+    }
+    fun doubleToInt(value: Double): Int {
+        return (value * 100).toInt()
     }
 
     private fun createCustomNotificationView(payload: ActivityPayload, imageCar: String = "", imageDriver: String = ""): RemoteViews {
@@ -167,12 +207,13 @@ class NotificationUpdateService : Service() {
         var bitmapWidth = screenWidth - (marginPx * 2)
 
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P || Build.VERSION.SDK_INT == Build.VERSION_CODES.R) {
-            bitmapWidth = screenWidth * 3
+            bitmapWidth = screenWidth * 2
         }
 
-        val randomProgress = Random.nextInt(1, 70)
+        val progressValue = doubleToInt(payload.deviceProgress)
+
         val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f)
-        val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, randomProgress, stopPoints)
+        val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue, stopPoints)
 
         val customView = RemoteViews(packageName, R.layout.notification_layout).apply {
             setTextViewText(R.id.tvTitle, payload.timeDriving)
@@ -372,12 +413,15 @@ class NotificationUpdateService : Service() {
 
 
     override fun onDestroy() {
+
         handler.removeCallbacksAndMessages(null)
 
         if (::webSocketClient.isInitialized) {
             webSocketClient.close()
         }
         super.onDestroy()
+        isRunning = false
+
     }
 
     override fun onBind(intent: Intent): IBinder? {
@@ -403,7 +447,5 @@ class NotificationUpdateService : Service() {
         val carImage: String? = null,
     )
 
-    companion object {
-        private const val PREFERENCES_FILE_KEY = "com.example.myapp.PREFERENCE_FILE_KEY"
-    }
+
 }
