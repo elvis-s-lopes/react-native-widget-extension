@@ -48,7 +48,7 @@
             android:textColor="#A2AAAD"
             android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
             android:textSize="11sp"
-            android:maxLength="20"
+            android:maxLength="10"
             android:ellipsize="end" />
 
 
