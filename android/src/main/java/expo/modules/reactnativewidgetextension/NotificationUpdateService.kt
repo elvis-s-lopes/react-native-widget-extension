@@ -109,7 +109,7 @@ class NotificationUpdateService : Service() {
         val payload = Gson().fromJson(data, ActivityPayload::class.java)
 
         if (!isConnected && payload.uniqueId != null) {
-            val uri = URI.create("ws://web-socket.gpswox.com.br?uniqueId=${payload.uniqueId}")
+            val uri = URI.create("wss://web-socket.gpswox.com.br?uniqueId=${payload.uniqueId}")
             webSocketClient = object : WebSocketClient(uri) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
                     Log.i("WebSocket", "Connected to WebSocket")
