@@ -169,7 +169,13 @@ class NotificationUpdateService : Service() {
             action = ACTION_STOP_SERVICE
         }
 
-        return PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_MUTABLE)
+       val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          PendingIntent.FLAG_MUTABLE
+         } else {
+          PendingIntent.FLAG_UPDATE_CURRENT
+       }
+
+    return PendingIntent.getService(this, 0, stopIntent, flags)
     }
 
 
