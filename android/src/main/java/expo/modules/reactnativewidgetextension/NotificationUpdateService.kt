@@ -47,7 +47,6 @@ class NotificationUpdateService : Service() {
     }
 
 
-
     private fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "live-activities"
@@ -223,6 +222,7 @@ class NotificationUpdateService : Service() {
         return (value * 100).toInt()
     }
 
+
     private fun createCustomNotificationView(payload: ActivityPayload, imageCar: String = "", imageDriver: String = ""): RemoteViews {
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
@@ -318,6 +318,7 @@ class NotificationUpdateService : Service() {
             setTextViewText(R.id.tvEndTextPercente, percentageText)
             setTextViewText(R.id.tvEndTextDistance, remainingDistanceText)
             setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
+            setTextColor(R.id.tvEndTextPercente, Color.parseColor(getColorHexForPercentage(progressValue)));
 
 
             if (imageCar.isNotEmpty()) {
@@ -407,6 +408,15 @@ class NotificationUpdateService : Service() {
         return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
+
+    fun getColorHexForPercentage(percentage: Int): String {
+        return when {
+            percentage > 30 -> "#00B894" // Verde
+            percentage > 20 -> "#ffc107" // Amarelo
+            else -> "#D63031" // Vermelho
+        }
+    }
+
     private fun createProgressBitmapWithDashedLine(
         context: Context,
         width: Int,
@@ -451,8 +461,6 @@ class NotificationUpdateService : Service() {
 
         return bitmap
     }
-
-
 
 
 

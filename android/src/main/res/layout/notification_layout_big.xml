@@ -77,7 +77,7 @@
             android:layout_alignParentStart="true"
             android:text="Nível do tanque :"
             android:textStyle="bold"
-            android:textAppearance="@style/TextAppearance.AppCompat"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
             android:textSize="13sp" />
 
         <TextView
@@ -87,7 +87,7 @@
             android:layout_alignParentEnd="true"
             android:text="(+ 0 km)"
             android:textStyle="bold"
-            android:textAppearance="@style/TextAppearance.AppCompat"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
             android:textSize="13sp" />
 
         <TextView
@@ -118,7 +118,7 @@
         android:layout_height="wrap_content"
         android:textSize="11sp"
         android:text="Address"
-        android:layout_marginBottom="12dp" />
+        />
 
 
 
