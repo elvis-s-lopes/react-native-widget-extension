@@ -169,13 +169,7 @@ class NotificationUpdateService : Service() {
             action = ACTION_STOP_SERVICE
         }
 
-       val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-          PendingIntent.FLAG_MUTABLE
-         } else {
-          PendingIntent.FLAG_UPDATE_CURRENT
-       }
-
-    return PendingIntent.getService(this, 0, stopIntent, flags)
+        return PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_MUTABLE)
     }
 
 
@@ -245,7 +239,9 @@ class NotificationUpdateService : Service() {
         val progressValue = doubleToInt(payload.deviceProgress)
 
         val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f)
-        val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue, stopPoints)
+        //val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue, stopPoints)
+        val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue)
+
 
         val customView = RemoteViews(packageName, R.layout.notification_layout).apply {
 
@@ -304,15 +300,23 @@ class NotificationUpdateService : Service() {
         }
 
         val progressValue = doubleToInt(payload.deviceProgress)
+        val percentageText = (payload.deviceProgress * 100).toInt().toString() + "%"
+        val  remainingDistanceText =  "(+"+ payload.remainingDistance + ")"
+
+
 
         val stopPoints = floatArrayOf(0.25f, 0.5f, 0.75f)
-        val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue, stopPoints)
+        //val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue, stopPoints)
+        val progressWithCarBitmap = createProgressBitmapWithDashedLine(this, bitmapWidth, progressValue)
+
 
         val customView = RemoteViews(packageName, R.layout.notification_layout_big).apply {
             setTextViewText(R.id.tvTitle, payload.timeDriving)
             setTextViewText(R.id.tvPlate, payload.devicePlate)
             setTextViewText(R.id.tvModel, payload.dateTimeDevice)
             setTextViewText(R.id.tvCarDetails, payload.deviceAddress)
+            setTextViewText(R.id.tvEndTextPercente, percentageText)
+            setTextViewText(R.id.tvEndTextDistance, remainingDistanceText)
             setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
 
 
@@ -406,6 +410,55 @@ class NotificationUpdateService : Service() {
     private fun createProgressBitmapWithDashedLine(
         context: Context,
         width: Int,
+        progress: Int
+    ): Bitmap {
+        val barHeight = 20f // Altura da barra
+        val cornerRadius = 20f // Raio de canto fixo e visível
+        val bitmap = Bitmap.createBitmap(width, barHeight.toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
+
+        // Barra de progresso de fundo
+        val progressRect = RectF(
+            0f,
+            0f,
+            width.toFloat(),
+            barHeight
+        )
+        paint.color = Color.parseColor("#d5d3db")
+        canvas.drawRoundRect(progressRect, cornerRadius, cornerRadius, paint)
+
+        // Progresso preenchido
+        val progressLength = width * (progress / 100f)
+        val progressRectFilled = RectF(
+            progressRect.left,
+            progressRect.top,
+            progressRect.left + progressLength,
+            progressRect.bottom
+        )
+
+        // Definindo a cor baseada no progresso
+        paint.color = when {
+            progress > 30 -> Color.parseColor("#00B894")
+            progress > 20 -> Color.parseColor("#ffc107")
+            else -> Color.parseColor("#D63031")
+        }
+
+        canvas.drawRoundRect(progressRectFilled, cornerRadius, cornerRadius, paint)
+
+        return bitmap
+    }
+
+
+
+
+
+    /*private fun createProgressBitmapWithDashedLine(
+        context: Context,
+        width: Int,
         progress: Int,
         stopPoints: FloatArray
     ): Bitmap {
@@ -482,7 +535,7 @@ class NotificationUpdateService : Service() {
         scaledCarBitmap.recycle()
 
         return bitmap
-    }
+    }*/
 
 
     fun Bitmap.toCircularBitmap(): Bitmap {
@@ -530,6 +583,7 @@ class NotificationUpdateService : Service() {
         val dateTimeDevice: String,
         val deviceAddress: String,
         val deviceProgress: Double,
+        var remainingDistance: String,
         val uniqueId: String,
     )
 
