@@ -247,6 +247,7 @@ class NotificationUpdateService : Service() {
 
             setTextViewText(R.id.tvTitle, payload.timeDriving)
             setTextViewText(R.id.tvPlate, payload.devicePlate)
+            setTextViewText(R.id.tvStartText, payload.fuelTankLevel)
             setTextViewText(R.id.tvModel, payload.dateTimeDevice)
             setTextViewText(R.id.tvCarDetails, payload.deviceAddress)
             setImageViewBitmap(R.id.imageProgress, progressWithCarBitmap)
@@ -313,6 +314,7 @@ class NotificationUpdateService : Service() {
         val customView = RemoteViews(packageName, R.layout.notification_layout_big).apply {
             setTextViewText(R.id.tvTitle, payload.timeDriving)
             setTextViewText(R.id.tvPlate, payload.devicePlate)
+            setTextViewText(R.id.tvStartText, payload.fuelTankLevel)
             setTextViewText(R.id.tvModel, payload.dateTimeDevice)
             setTextViewText(R.id.tvCarDetails, payload.deviceAddress)
             setTextViewText(R.id.tvEndTextPercente, percentageText)
@@ -586,6 +588,7 @@ class NotificationUpdateService : Service() {
         val statusColor: String,
         val driverName: String,
         val devicePlate: String,
+        val fuelTankLevel: String,
         val deviceModel: String,
         val timeDriving: String,
         val dateTimeDevice: String,
