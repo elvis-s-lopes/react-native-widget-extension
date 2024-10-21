@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addBuildPhases = void 0;
+exports.addBuildPhases = addBuildPhases;
 const util = __importStar(require("util"));
 function addBuildPhases(xcodeProject, { targetUuid, groupName, productFile, widgetFiles, }) {
     const buildPath = `""`;
@@ -45,4 +45,3 @@ function addBuildPhases(xcodeProject, { targetUuid, groupName, productFile, widg
     // Resources build phase
     xcodeProject.addBuildPhase([...assetDirectories], "PBXResourcesBuildPhase", groupName, targetUuid, folderType, buildPath);
 }
-exports.addBuildPhases = addBuildPhases;

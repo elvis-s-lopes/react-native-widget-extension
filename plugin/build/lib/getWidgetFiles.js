@@ -23,7 +23,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.copyFileSync = exports.getWidgetFiles = void 0;
+exports.getWidgetFiles = getWidgetFiles;
+exports.copyFileSync = copyFileSync;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 function getWidgetFiles(widgetsPath, targetPath, moduleFileName, attributesFileName) {
@@ -86,7 +87,6 @@ function getWidgetFiles(widgetsPath, targetPath, moduleFileName, attributesFileN
     });
     return widgetFiles;
 }
-exports.getWidgetFiles = getWidgetFiles;
 function copyFileSync(source, target) {
     let targetFile = target;
     if (fs.existsSync(target) && fs.lstatSync(target).isDirectory()) {
@@ -94,7 +94,6 @@ function copyFileSync(source, target) {
     }
     fs.writeFileSync(targetFile, fs.readFileSync(source));
 }
-exports.copyFileSync = copyFileSync;
 function copyFolderRecursiveSync(source, target) {
     const targetPath = path.join(target, path.basename(source));
     if (!fs.existsSync(targetPath)) {

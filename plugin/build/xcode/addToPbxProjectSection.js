@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addToPbxProjectSection = void 0;
+exports.addToPbxProjectSection = addToPbxProjectSection;
 function addToPbxProjectSection(xcodeProject, target) {
     xcodeProject.addToPbxProjectSection(target);
     // Add target attributes to project section
@@ -12,4 +12,3 @@ function addToPbxProjectSection(xcodeProject, target) {
         LastSwiftMigration: 1250,
     };
 }
-exports.addToPbxProjectSection = addToPbxProjectSection;

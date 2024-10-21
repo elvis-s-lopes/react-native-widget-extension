@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addToPbxNativeTargetSection = void 0;
+exports.addToPbxNativeTargetSection = addToPbxNativeTargetSection;
 function addToPbxNativeTargetSection(xcodeProject, { targetName, targetUuid, productFile, xCConfigurationList, }) {
     const target = {
         uuid: targetUuid,
@@ -27,4 +27,3 @@ function addToPbxNativeTargetSection(xcodeProject, { targetName, targetUuid, pro
     ); */
     return target;
 }
-exports.addToPbxNativeTargetSection = addToPbxNativeTargetSection;

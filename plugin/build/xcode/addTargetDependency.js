@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addTargetDependency = void 0;
+exports.addTargetDependency = addTargetDependency;
 function addTargetDependency(xcodeProject, target) {
     if (!xcodeProject.hash.project.objects["PBXTargetDependency"]) {
         xcodeProject.hash.project.objects["PBXTargetDependency"] = {};
@@ -12,4 +12,3 @@ function addTargetDependency(xcodeProject, target) {
         target.uuid,
     ]);
 }
-exports.addTargetDependency = addTargetDependency;

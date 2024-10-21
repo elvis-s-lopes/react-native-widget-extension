@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addPbxGroup = void 0;
+exports.addPbxGroup = addPbxGroup;
 function addPbxGroup(xcodeProject, { targetName, widgetFiles, }) {
     const { swiftFiles, intentFiles, otherFiles, assetDirectories, entitlementFiles, plistFiles, } = widgetFiles;
     // Add PBX group
@@ -22,4 +22,3 @@ function addPbxGroup(xcodeProject, { targetName, widgetFiles, }) {
         });
     }
 }
-exports.addPbxGroup = addPbxGroup;

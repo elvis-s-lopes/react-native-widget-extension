@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addXCConfigurationList = void 0;
+exports.addXCConfigurationList = addXCConfigurationList;
 function addXCConfigurationList(xcodeProject, { targetName, currentProjectVersion, bundleIdentifier, deploymentTarget, marketingVersion, }) {
     const commonBuildSettings = {
         /* ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -58,4 +58,3 @@ function addXCConfigurationList(xcodeProject, { targetName, currentProjectVersio
     const xCConfigurationList = xcodeProject.addXCConfigurationList(buildConfigurationsList, "Release", `Build configuration list for PBXNativeTarget "${targetName}"`);
     return xCConfigurationList;
 }
-exports.addXCConfigurationList = addXCConfigurationList;

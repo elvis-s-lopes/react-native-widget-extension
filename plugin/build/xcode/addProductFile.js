@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addProductFile = void 0;
+exports.addProductFile = addProductFile;
 function addProductFile(xcodeProject, { targetName, groupName }) {
     const options = {
         basename: `${targetName}.appex`,
@@ -19,4 +19,3 @@ function addProductFile(xcodeProject, { targetName, groupName }) {
     const productFile = xcodeProject.addProductFile(targetName, options);
     return productFile;
 }
-exports.addProductFile = addProductFile;
